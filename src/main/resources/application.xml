@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:c="http://www.springframework.org/schema/c"
+       xmlns:cache="http://www.springframework.org/schema/cache"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+       xmlns:jee="http://www.springframework.org/schema/jee"
+       xmlns:lang="http://www.springframework.org/schema/lang"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+		http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd ">
+
+    <!-- 配置Spring扫描包 使Spring的注解生效-->
+    <context:component-scan base-package="com.ty.transaction.**"/>
+    <!-- 配置数据源-->
+    <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <property name="jdbcUrl"
+                  value="jdbc:mysql://localhost:3306/codegen_test?useUnicode=true&amp;characterEncoding=UTF-8&amp;autoReconnect=true&amp;serverTimezone=Asia/Shanghai"/>
+        <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"></property>
+        <property name="username" value="root"/>
+        <property name="password" value="123456"/>
+    </bean>
+
+    <!-- 配置Mybatis SqlSessionFactory Config -->
+    <bean id="sqlSessionFactory" class="com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+
+        <!-- 由于Mybatis plus 自己封装一些操作 就没有写那么复杂的xml或注解 如果要用请指明xml-->
+        <!--<property name="mapperLocations" value="classpath:mappers/**Mapper.xml"/>-->
+        <property name="plugins">
+            <array>
+                <bean class="com.baomidou.mybatisplus.extension.plugins.PaginationInterceptor"></bean>
+            </array>
+        </property>
+    </bean>
+
+    <!-- 配置扫描Mapper接口包-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.ty.transaction.mapper"/>
+    </bean>
+
+    <!-- 配置事务管理器 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 下面实现方式 不管哪一种都要配置事务管理,而具体事务管理器看自己使用的持久层框架了
+      下面提供怎么使用 只要解开其中一种方式的注释即可-->
+
+
+    <!-- 使用方式一 start -->
+    <!-- 配合 注解@Transactional使用-->
+
+
+
+    <tx:annotation-driven transaction-manager="txManager"/>
+
+
+
+    <!-- 使用方式一 end -->
+
+    <!-- 使用方式二 start 注: 此方式使用AspectJ AOP的方式 所以要导入相应的包-->
+
+
+    <!--
+        <tx:advice transaction-manager="txManager" id="txAdvice">
+            <tx:attributes>
+                 name="modelTwo": 配置方法名,符合pointcut规则和方法名  事务才能生效
+                <tx:method name="modelTwo" isolation="DEFAULT" propagation="REQUIRED"
+                           rollback-for="com.ty.transaction.exception.OtherException"
+                           no-rollback-for="java.lang.ArithmeticException"
+                />
+            </tx:attributes>
+        </tx:advice>
+
+
+        <aop:config>
+        advice-ref="txAdvice": 引用上面配置的事务通知id
+            <aop:advisor advice-ref="txAdvice" pointcut="execution(* *..service.impl.*.*(..))"  />
+        </aop:config>
+        -->
+
+
+    <!-- 使用方式二 end -->
+
+
+    <!-- 使用方式三 start 不推荐使用
+     这种是通过代理类进行增强事务的,要使用就要使用当前这个代理类(studentServiceImplProxy),而不是原来的类(studentServiceImpl)
+     具体是否使用这个增强代理类 可通过@Resource注解来指定,或者把这个增强代理类优先注入primary="true"-->
+
+    <!--
+        <bean id="studentServiceImplProxy" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+              primary="true" >
+            <property name="target" ref="studentServiceImpl"/>
+            <property name="transactionManager" ref="txManager"/>
+            <property name="transactionAttributes">
+                <props>
+                       -: 减号表示发生这个异常时会回滚这个事务
+                       +: 加号表示发生这个异常时会提交这个事务
+                       key="modelThree": 需要事务的方法名
+                    <prop key="modelThree">ISOLATION_DEFAULT,PROPAGATION_REQUIRED,-OtherException,+ArithmeticException
+                    </prop>
+                </props>
+            </property>
+        </bean>
+    -->
+
+    <!-- 使用方式三 end-->
+</beans>
